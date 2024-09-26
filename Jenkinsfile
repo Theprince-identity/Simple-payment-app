@@ -5,7 +5,7 @@ pipeline {
         DOCKER_IMAGE = 'theprinceidentity/simple-payment-app' // Update with your Docker Hub username
         K8S_DEPLOYMENT_FILE = 'deployment.yaml' // Your Kubernetes deployment file
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Jenkins credentials ID for Docker Hub
-        K8S_CREDENTIALS_ID = 'k8s-token' // Jenkins credentials ID for Kubernetes
+        K8S_TOKEN_ID = 'k8s-token' // Jenkins Secret Text ID for Kubernetes token
     }
 
     stages {
@@ -41,8 +41,9 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Set the Kubernetes context
-                    withCredentials([usernamePassword(credentialsId: K8S_CREDENTIALS_ID, usernameVariable: 'K8S_USER', passwordVariable: 'K8S_TOKEN')]) {
+                    // Get the Kubernetes token from Jenkins Secret Text
+                    withCredentials([string(credentialsId: K8S_TOKEN_ID, variable: 'K8S_TOKEN')]) {
+                        // Set the Kubernetes context
                         sh '''
                             kubectl config set-credentials jenkins --token=$K8S_TOKEN
                             kubectl config set-context --current --user=jenkins
@@ -62,3 +63,4 @@ pipeline {
         }
     }
 }
+
