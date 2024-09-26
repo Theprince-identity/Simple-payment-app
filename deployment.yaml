@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-payment-app
+  labels:
+    app: simple-payment-app
+spec:
+  replicas: 3  # Number of desired pod replicas
+  selector:
+    matchLabels:
+      app: simple-payment-app
+  template:
+    metadata:
+      labels:
+        app: simple-payment-app
+    spec:
+      containers:
+      - name: simple-payment-app
+        image: theprinceidentity/simple-payment-app:latest  # Use your Docker Hub image name
+        ports:
+        - containerPort: 8000  # Change to the port your app listens on
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simple-payment-app
+spec:
+  type: ClusterIP  # Use ClusterIP for internal access; change to LoadBalancer if external access is needed
+  selector:
+    app: simple-payment-app
+  ports:
+    - protocol: TCP
+      port: 80  # The port exposed by the service
+      targetPort: 8000  # The port your app is listening on in the container
+
