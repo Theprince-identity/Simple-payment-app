@@ -6,6 +6,7 @@ pipeline {
         K8S_DEPLOYMENT_FILE = 'deployment.yaml' // Your Kubernetes deployment file
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Jenkins credentials ID for Docker Hub
         K8S_TOKEN_ID = 'k8s-token' // Jenkins Secret Text ID for Kubernetes token
+        K8S_SERVER_URL = 'https://192.168.49.2:8443'
     }
 
     stages {
