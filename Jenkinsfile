@@ -2,56 +2,63 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'theprinceidentity/simple-payment-app:latest'  // Docker Hub image name
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'  // Jenkins credential ID for Docker Hub
-        K8S_API_SERVER = 'https://192.168.49.2:8443'  // Kubernetes API server URL
-        K8S_TOKEN = credentials('k8s-token')  // Jenkins credential ID for your service account token
-        CA_CERT = credentials('ca-cert')  // Optional: If not using, you can skip this
+        DOCKER_IMAGE = 'theprinceidentity/simple-payment-app' // Update with your Docker Hub username
+        K8S_DEPLOYMENT_FILE = 'deployment.yaml' // Your Kubernetes deployment file
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Jenkins credentials ID for Docker Hub
+        K8S_CREDENTIALS_ID = 'k8s-token' // Jenkins credentials ID for Kubernetes
     }
 
     stages {
-        stage('Build Docker Image') {
+        stage('Checkout') {
+            steps {
+                // Pull the code from the repository
+                git 'https://github.com/Theprince-identity/Simple-payment-app.git' // Update with your repository URL
+            }
+        }
+        
+        stage('Build') {
             steps {
                 script {
                     // Build the Docker image
-                    docker.build(DOCKER_IMAGE)
+                    sh 'docker build -t $DOCKER_IMAGE .'
                 }
             }
         }
-
-        stage('Push Docker Image') {
+        
+        stage('Push') {
             steps {
                 script {
-                    // Push the Docker image to Docker Hub
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
-                        docker.image(DOCKER_IMAGE).push()
+                    // Log in to Docker Hub
+                    withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
                     }
+                    // Push the Docker image to Docker Hub
+                    sh 'docker push $DOCKER_IMAGE'
                 }
             }
         }
-
-        stage('Deploy to Kubernetes') {
+        
+        stage('Deploy') {
             steps {
                 script {
-                    // Deploy to Kubernetes using kubectl directly
-                    sh """
-                    kubectl config set-cluster my-cluster --server=${K8S_API_SERVER}
-                    kubectl config set-credentials jenkins --token=${K8S_TOKEN}
-                    kubectl config set-context jenkins-context --cluster=my-cluster --user=jenkins
-                    kubectl config use-context jenkins-context
-                    kubectl apply -f deployment.yaml --insecure-skip-tls-verify --validate=false # Path to your Kubernetes deployment file
-                    """
+                    // Set the Kubernetes context
+                    withCredentials([usernamePassword(credentialsId: K8S_CREDENTIALS_ID, usernameVariable: 'K8S_USER', passwordVariable: 'K8S_TOKEN')]) {
+                        sh '''
+                            kubectl config set-credentials jenkins --token=$K8S_TOKEN
+                            kubectl config set-context --current --user=jenkins
+                        '''
+                    }
+                    // Deploy to Kubernetes
+                    sh 'kubectl apply -f $K8S_DEPLOYMENT_FILE --insecure-skip-tls-verify --validate=false'
                 }
             }
         }
     }
-
+    
     post {
-        success {
-            echo 'Deployment successful!'
-        }
-        failure {
-            echo 'Deployment failed!'
+        always {
+            // Clean up workspace after build
+            cleanWs()
         }
     }
 }
