@@ -6,7 +6,7 @@ pipeline {
         K8S_DEPLOYMENT_FILE = 'deployment.yaml' // Your Kubernetes deployment file
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Jenkins credentials ID for Docker Hub
         K8S_TOKEN_ID = 'k8s-token' // Jenkins Secret Text ID for Kubernetes token
-        K8S_SERVER_URL = 'https://127.0.0.1:32771'
+        K8S_SERVER_URL = 'https://127.0.0.1:32771' // Kubernetes API server URL
     }
 
     stages {
@@ -21,7 +21,7 @@ pipeline {
             steps {
                 script {
                     // Build the Docker image
-                    sh 'docker build -t $DOCKER_IMAGE .'
+                    sh "docker build -t ${DOCKER_IMAGE} ."
                 }
             }
         }
@@ -31,10 +31,10 @@ pipeline {
                 script {
                     // Log in to Docker Hub
                     withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+                        sh "echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin"
                     }
                     // Push the Docker image to Docker Hub
-                    sh 'docker push $DOCKER_IMAGE'
+                    sh "docker push ${DOCKER_IMAGE}"
                 }
             }
         }
@@ -46,12 +46,13 @@ pipeline {
                     withCredentials([string(credentialsId: K8S_TOKEN_ID, variable: 'K8S_TOKEN')]) {
                         // Set the Kubernetes context
                         sh '''
-                            kubectl config set-credentials jenkins --token=$K8S_TOKEN
+                            kubectl config set-cluster k8s-cluster --server=${K8S_SERVER_URL} --insecure-skip-tls-verify=true
+                            kubectl config set-credentials jenkins --token=${K8S_TOKEN}
                             kubectl config set-context --current --user=jenkins
                         '''
                     }
                     // Deploy to Kubernetes
-                    sh 'kubectl apply -f $K8S_DEPLOYMENT_FILE --insecure-skip-tls-verify --validate=false'
+                    sh "kubectl apply -f ${K8S_DEPLOYMENT_FILE} --insecure-skip-tls-verify --validate=false"
                 }
             }
         }
@@ -64,4 +65,3 @@ pipeline {
         }
     }
 }
-
