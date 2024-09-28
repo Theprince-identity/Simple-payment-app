@@ -44,11 +44,12 @@ pipeline {
                 script {
                     // Get the Kubernetes token from Jenkins Secret Text
                     withCredentials([string(credentialsId: K8S_TOKEN_ID, variable: 'K8S_TOKEN')]) {
-                        // Set the Kubernetes context
+                        // Set the Kubernetes context and create a new context instead of modifying the current one
                         sh '''
                             kubectl config set-cluster k8s-cluster --server=${K8S_SERVER_URL} --insecure-skip-tls-verify=true
                             kubectl config set-credentials jenkins --token=${K8S_TOKEN}
-                            kubectl config set-context --current --user=jenkins
+                            kubectl config set-context k8s-context --cluster=k8s-cluster --user=jenkins
+                            kubectl config use-context k8s-context
                         '''
                     }
                     // Deploy to Kubernetes
